@@ -1,1 +1,975 @@
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GymMemory - Diario Palestra & Aiuto Memoria</title>
+    <!-- Caricamento Tailwind CSS per lo styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Inter per massima leggibilità -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome per icone chiare e intuitive -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        gym: {
+                            bg: '#0f172a',      // Slate 900
+                            card: '#1e293b',    // Slate 800
+                            input: '#020617',   // Slate 950
+                            neon: '#10b981',    // Emerald 500
+                            neonHover: '#059669',
+                            cyan: '#06b6d4',    // Cyan 500
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Nasconde le freccette negli input numerici su mobile */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        /* Animazione morbida per i pannelli espandibili */
+        .accordion-content {
+            transition: all 0.25s ease-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col pb-24">
 
+    <!-- Header fisso in alto -->
+    <header class="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-lg">
+        <div class="max-w-xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-slate-950 font-extrabold text-xl shadow-md shadow-emerald-500/20">
+                    <i class="fa-solid fa-dumbbell"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight text-white leading-none">
+                        Gym<span class="text-emerald-400">Memory</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 mt-0.5" id="current-date-display">Oggi</p>
+                </div>
+            </div>
+            
+            <!-- Pulsante rapido Checklist Pre-Palestra -->
+            <button onclick="toggleChecklistModal()" class="relative flex items-center gap-2 bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-slate-200 px-3.5 py-2.5 rounded-xl border border-slate-700 text-sm font-semibold">
+                <i class="fa-solid fa-bag-shopping text-cyan-400"></i>
+                <span>Borsa</span>
+                <span id="checklist-badge" class="bg-emerald-500 text-slate-950 text-xs font-bold px-1.5 py-0.5 rounded-full">0/5</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Contenitore Principale -->
+    <main class="flex-1 max-w-xl w-full mx-auto px-4 pt-4 space-y-5">
+
+        <!-- Navigazione Tab Principale (Allenamento vs Storico) -->
+        <div class="grid grid-cols-2 gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+            <button id="tab-btn-workout" onclick="switchMainTab('workout')" class="py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition bg-emerald-500 text-slate-950 shadow-md">
+                <i class="fa-solid fa-fire"></i> Allenamento
+            </button>
+            <button id="tab-btn-history" onclick="switchMainTab('history')" class="py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition text-slate-400 hover:text-white">
+                <i class="fa-solid fa-chart-line"></i> Storico & Backup
+            </button>
+        </div>
+
+        <!-- ==================== SEZIONE 1: ALLENAMENTO GIORNO PER GIORNO ==================== -->
+        <section id="view-workout" class="space-y-5">
+            
+            <!-- Selettore Scheda / Giorno -->
+            <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 shadow-md">
+                <label for="day-selector" class="block text-xs font-bold uppercase tracking-wider text-cyan-400 mb-2">
+                    <i class="fa-solid fa-calendar-day mr-1"></i> Che scheda fai oggi?
+                </label>
+                <div class="relative">
+                    <select id="day-selector" onchange="changeWorkoutDay(this.value)" class="w-full appearance-none bg-slate-950 border border-slate-700 text-white font-bold text-base rounded-xl px-4 py-3.5 pr-10 focus:outline-none focus:border-emerald-500 transition">
+                        <!-- Popolato via JS -->
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-emerald-400">
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </div>
+                </div>
+                <p id="day-description" class="text-xs text-slate-400 mt-2.5 leading-relaxed">
+                    <!-- Descrizione del giorno -->
+                </p>
+            </div>
+
+            <!-- Lista Esercizi del Giorno -->
+            <div id="exercises-container" class="space-y-4">
+                <!-- Le card degli esercizi vengono generate dinamicamente qui -->
+            </div>
+
+            <!-- Pulsante per aggiungere un nuovo esercizio alla scheda corrente -->
+            <button onclick="openAddExerciseModal()" class="w-full py-4 rounded-2xl border-2 border-dashed border-slate-700 hover:border-emerald-500/70 bg-slate-800/30 hover:bg-slate-800/60 text-slate-300 hover:text-emerald-400 font-bold text-sm flex items-center justify-center gap-2 transition active:scale-98">
+                <i class="fa-solid fa-plus-circle text-lg"></i> Aggiungi Esercizio a questa Scheda
+            </button>
+
+        </section>
+
+        <!-- ==================== SEZIONE 2: STORICO & BACKUP ==================== -->
+        <section id="view-history" class="hidden space-y-5">
+            
+            <!-- Box Esportazione / Backup per non perdere mai i dati -->
+            <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-4 shadow-lg">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 mt-0.5">
+                        <i class="fa-solid fa-shield-halved text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-white text-base">Salva-Memoria & Backup</h3>
+                        <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                            I tuoi dati sono salvati sul telefono. Copia il riepilogo o scarica il backup per non perderli mai.
+                        </p>
+                        <div class="grid grid-cols-2 gap-2.5 mt-3">
+                            <button onclick="copySummaryToClipboard()" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95">
+                                <i class="fa-solid fa-copy text-emerald-400"></i> Copia Testo
+                            </button>
+                            <button onclick="downloadBackupJSON()" class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95">
+                                <i class="fa-solid fa-download"></i> Scarica File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtro e Intestazione Storico -->
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-emerald-400"></i> Sessioni Registrate
+                </h2>
+                <button onclick="confirmClearHistory()" class="text-xs text-rose-400 hover:text-rose-300 font-semibold px-2.5 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 transition">
+                    <i class="fa-solid fa-trash-can mr-1"></i> Svuota
+                </button>
+            </div>
+
+            <!-- Filtro rapido per esercizio -->
+            <div>
+                <select id="history-filter" onchange="renderHistory()" class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm font-medium rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-cyan-500">
+                    <option value="ALL">Tutti gli esercizi</option>
+                </select>
+            </div>
+
+            <!-- Lista cronologica dello storico -->
+            <div id="history-list" class="space-y-3">
+                <!-- Popolato via JS -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==================== MODALE 1: CHECKLIST PRE-PALESTRA ==================== -->
+    <div id="checklist-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-slate-900 border-t sm:border border-slate-700 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-list-check text-cyan-400 text-xl"></i>
+                    <h3 class="text-lg font-extrabold text-white">Checklist Pre-Palestra</h3>
+                </div>
+                <button onclick="toggleChecklistModal()" class="w-9 h-9 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <p class="text-xs text-slate-400">Spunta gli oggetti mentre prepari il borsone per non dimenticare nulla a casa:</p>
+
+            <div id="checklist-items" class="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                <!-- Generato via JS -->
+            </div>
+
+            <div class="pt-2 flex gap-2.5">
+                <button onclick="resetChecklist()" class="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition">
+                    <i class="fa-solid fa-rotate-left mr-1"></i> Resetta checklist
+                </button>
+                <button onclick="toggleChecklistModal()" class="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-sm transition">
+                    Tutto pronto!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODALE 2: AGGIUNGI ESERCIZIO ==================== -->
+    <div id="add-exercise-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-slate-900 border-t sm:border border-slate-700 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-extrabold text-white">Nuovo Esercizio</h3>
+                <button onclick="closeAddExerciseModal()" class="w-9 h-9 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="add-exercise-form" onsubmit="handleAddExercise(event)" class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">Nome Esercizio *</label>
+                    <input type="text" id="new-ex-name" required placeholder="Es. Panca Inclinata Manubri" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-3 text-white text-sm focus:border-emerald-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">Serie x Ripetizioni Target *</label>
+                    <input type="text" id="new-ex-target" required placeholder="Es. 3x10 oppure 4x8" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-3 text-white text-sm focus:border-emerald-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">Aiuto Tecnica / Come si fa (Opzionale)</label>
+                    <textarea id="new-ex-guide" rows="2" placeholder="Es. Tieni le scapole addotte e scendi controllato fino al petto." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-emerald-500 focus:outline-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">Note Personali / Setup (Opzionale)</label>
+                    <input type="text" id="new-ex-note" placeholder="Es. Panca inclinata a 30 gradi (foro 3)" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-3 text-white text-sm focus:border-emerald-500 focus:outline-none">
+                </div>
+                <div class="pt-2 flex gap-2.5">
+                    <button type="button" onclick="closeAddExerciseModal()" class="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm">Annulla</button>
+                    <button type="submit" class="flex-1 py-3 rounded-xl bg-emerald-500 text-slate-950 font-extrabold text-sm">Aggiungi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== MODALE 3: CONFERMA SVUOTA STORICO (Sostituisce confirm()) ==================== -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4 text-center">
+            <div class="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-lg font-extrabold text-white">Cancellare tutto lo storico?</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">
+                Questa azione eliminerà tutti i pesi e le ripetizioni registrate finora. Ti consigliamo di scaricare prima un backup!
+            </p>
+            <div class="flex gap-2.5 pt-2">
+                <button onclick="closeConfirmModal()" class="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm">Annulla</button>
+                <button onclick="executeClearHistory()" class="flex-1 py-3 rounded-xl bg-rose-500 text-white font-extrabold text-sm">Sì, cancella</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification (Messaggio di conferma fluttuante) -->
+    <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 transition-all duration-300 transform translate-y-4">
+        <div class="bg-slate-800 border border-emerald-500/50 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-sm font-bold">
+            <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+            <span id="toast-message">Salvato!</span>
+        </div>
+    </div>
+
+    <!-- ==================== LOGICA JAVASCRIPT ==================== -->
+    <script>
+        // Chiavi per il LocalStorage
+        const STORAGE_KEYS = {
+            WORKOUTS: 'gymmemory_workouts_v1',
+            HISTORY: 'gymmemory_history_v1',
+            CHECKLIST: 'gymmemory_checklist_v1',
+            SELECTED_DAY: 'gymmemory_selected_day_v1'
+        };
+
+        // Dati predefiniti (Schede realistiche con consigli pratici per aiutare la memoria)
+        const DEFAULT_WORKOUTS = {
+            'dayA': {
+                title: 'Giorno A: Spinta (Petto, Spalle, Tricipiti)',
+                description: 'Focus sui muscoli di spinta. Ricorda di scaldare bene le spalle prima di iniziare con i carichi pesanti.',
+                exercises: [
+                    {
+                        id: 'ex_chest_press',
+                        name: 'Chest Press (Macchinario Petto)',
+                        target: '3x10',
+                        guide: 'Regola il sedile in modo che le maniglie siano all’altezza del centro del petto. Spingi in avanti senza bloccare completamente i gomiti e torna indietro lentamente.',
+                        note: 'Altezza sedile: 4 | Scapole ben appoggiate allo schienale'
+                    },
+                    {
+                        id: 'ex_spinte_manubri',
+                        name: 'Spinte su Panca Inclinata (Manubri)',
+                        target: '3x10',
+                        guide: 'Imposta lo schienale a circa 30-45°. Porta i manubri verso l’alto facendoli quasi toccare, poi scendi controllando il peso fino all’altezza del petto.',
+                        note: 'Inclinazione panca: 3° tacca | Usa i manubri gommati'
+                    },
+                    {
+                        id: 'ex_shoulder_press',
+                        name: 'Shoulder Press / Alzate Laterali',
+                        target: '3x12',
+                        guide: 'Per le alzate laterali: gomiti leggermente piegati, alza i manubri fino all’altezza delle spalle come se versassi dell’acqua da due brocche.',
+                        note: 'Non slanciare la schiena, peso controllato'
+                    },
+                    {
+                        id: 'ex_pushdown',
+                        name: 'Pushdown ai Cavi (Tricipiti)',
+                        target: '3x12',
+                        guide: 'Attacca la corda o la barra al cavo alto. Tieni i gomiti incollati ai fianchi e spingi verso il basso stendendo completamente le braccia.',
+                        note: 'Cavo alto | Usa la corda e apri leggermente in fondo'
+                    }
+                ]
+            },
+            'dayB': {
+                title: 'Giorno B: Tirata (Dorso, Bicipiti)',
+                description: 'Focus sulla schiena e sulle braccia. Pensa a tirare usando i gomiti e non solo le mani.',
+                exercises: [
+                    {
+                        id: 'ex_lat_machine',
+                        name: 'Lat Machine Avanti',
+                        target: '3x10',
+                        guide: 'Blocca bene le ginocchia sotto i rulli. Afferra la sbarra poco più larga delle spalle, porta il petto in fuori e tira la sbarra fino alla parte alta del petto.',
+                        note: 'Rullo ginocchia: tacca 3 | Presa larga pronazione'
+                    },
+                    {
+                        id: 'ex_pulley',
+                        name: 'Pulley Basso (Rematore al cavo)',
+                        target: '3x10',
+                        guide: 'Piedi sulle pedane, ginocchia leggermente piegate e schiena dritta. Tira la maniglia verso l’ombelico stringendo le scapole tra loro.',
+                        note: 'Triangolo stretto | Non curvare la zona lombare'
+                    },
+                    {
+                        id: 'ex_curl_manubri',
+                        name: 'Curl Bicipiti Alternato (Manubri)',
+                        target: '3x12',
+                        guide: 'In piedi o seduto, palmi rivolti in avanti. Piega un braccio alla volta portando il manubrio verso la spalla senza muovere il gomito in avanti.',
+                        note: '12 ripetizioni per braccio | Discesa lenta 2 secondi'
+                    },
+                    {
+                        id: 'ex_face_pull',
+                        name: 'Face Pull ai Cavi (Postura)',
+                        target: '3x15',
+                        guide: 'Imposta il cavo all’altezza del viso con la corda. Tira verso la fronte aprendo i gomiti verso l’esterno. Ottimo per la salute delle spalle.',
+                        note: 'Cavo altezza occhi | Peso leggero, movimento pulito'
+                    }
+                ]
+            },
+            'dayC': {
+                title: 'Giorno C: Gambe e Addome',
+                description: 'Allenamento parte inferiore e core. Prenditi almeno 90-120 secondi di recupero tra una serie e l’altra.',
+                exercises: [
+                    {
+                        id: 'ex_leg_press',
+                        name: 'Leg Press 45° (Pressa Gambe)',
+                        target: '3x10',
+                        guide: 'Piedi al centro della pedana larghezza spalle. Sblocca i fermi, scendi finché le ginocchia formano un angolo di 90° e spingi con i talloni senza stendere del tutto le ginocchia.',
+                        note: 'Schienale medio | Non staccare mai il sedere'
+                    },
+                    {
+                        id: 'ex_leg_extension',
+                        name: 'Leg Extension (Quadricipiti)',
+                        target: '3x12',
+                        guide: 'Allinea il ginocchio con il perno rosso della macchina. Stendi completamente le gambe contraendo forte la coscia in alto per 1 secondo.',
+                        note: 'Schienale: 3 | Rullo caviglie: 2'
+                    },
+                    {
+                        id: 'ex_leg_curl',
+                        name: 'Leg Curl Seduto o Sdraiato (Femorali)',
+                        target: '3x12',
+                        guide: 'Piega le gambe portando i talloni verso i glutei in modo fluido e controllato, evitando di inarcare la schiena.',
+                        note: 'Controlla bene il ritorno del peso'
+                    },
+                    {
+                        id: 'ex_plank',
+                        name: 'Plank + Crunch a Terra (Addome)',
+                        target: '3x45s + 15',
+                        guide: 'Nel Plank tieni i gomiti sotto le spalle, contrai glutei e addome formando una linea retta dalla testa ai talloni.',
+                        note: 'Tappetino blu | Recupero 45 secondi'
+                    }
+                ]
+            }
+        };
+
+        // Checklist pre-palestra predefinita
+        const DEFAULT_CHECKLIST = [
+            { id: 'chk_towel', text: 'Asciugamano grande (per panche/macchinari)', checked: false },
+            { id: 'chk_water', text: 'Borraccia piena d’acqua', checked: false },
+            { id: 'chk_lock', text: 'Lucchetto per l’armadietto', checked: false },
+            { id: 'chk_shoes', text: 'Scarpe da ginnastica pulite', checked: false },
+            { id: 'chk_headphones', text: 'Cuffie / Auricolari carichi', checked: false }
+        ];
+
+        // Stato dell'applicazione in memoria
+        let appState = {
+            workouts: {},
+            history: [],
+            checklist: [],
+            selectedDay: 'dayA'
+        };
+
+        // ==================== INIZIALIZZAZIONE ====================
+        window.onload = function() {
+            loadStateFromStorage();
+            displayTodayDate();
+            populateDaySelector();
+            renderExercises();
+            renderChecklist();
+            renderHistory();
+        };
+
+        // Carica dati da LocalStorage o inizializza con i default
+        function loadStateFromStorage() {
+            try {
+                const savedWorkouts = localStorage.getItem(STORAGE_KEYS.WORKOUTS);
+                const savedHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
+                const savedChecklist = localStorage.getItem(STORAGE_KEYS.CHECKLIST);
+                const savedDay = localStorage.getItem(STORAGE_KEYS.SELECTED_DAY);
+
+                appState.workouts = savedWorkouts ? JSON.parse(savedWorkouts) : JSON.parse(JSON.stringify(DEFAULT_WORKOUTS));
+                appState.history = savedHistory ? JSON.parse(savedHistory) : [];
+                appState.checklist = savedChecklist ? JSON.parse(savedChecklist) : JSON.parse(JSON.stringify(DEFAULT_CHECKLIST));
+                appState.selectedDay = (savedDay && appState.workouts[savedDay]) ? savedDay : 'dayA';
+
+                // Salva i default al primo avvio
+                if (!savedWorkouts) saveWorkouts();
+                if (!savedChecklist) saveChecklist();
+            } catch (error) {
+                console.error("Errore nel caricamento dati:", error);
+                appState.workouts = JSON.parse(JSON.stringify(DEFAULT_WORKOUTS));
+                appState.checklist = JSON.parse(JSON.stringify(DEFAULT_CHECKLIST));
+            }
+        }
+
+        function saveWorkouts() {
+            localStorage.setItem(STORAGE_KEYS.WORKOUTS, JSON.stringify(appState.workouts));
+        }
+
+        function saveHistory() {
+            localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(appState.history));
+        }
+
+        function saveChecklist() {
+            localStorage.setItem(STORAGE_KEYS.CHECKLIST, JSON.stringify(appState.checklist));
+        }
+
+        // Mostra la data odierna nell'header
+        function displayTodayDate() {
+            const options = { weekday: 'long', day: 'numeric', month: 'long' };
+            const today = new Date().toLocaleDateString('it-IT', options);
+            document.getElementById('current-date-display').textContent = today.charAt(0).toUpperCase() + today.slice(1);
+        }
+
+        // ==================== NAVIGAZIONE TAB ====================
+        function switchMainTab(tabName) {
+            const viewWorkout = document.getElementById('view-workout');
+            const viewHistory = document.getElementById('view-history');
+            const btnWorkout = document.getElementById('tab-btn-workout');
+            const btnHistory = document.getElementById('tab-btn-history');
+
+            if (tabName === 'workout') {
+                viewWorkout.classList.remove('hidden');
+                viewHistory.classList.add('hidden');
+                btnWorkout.className = "py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition bg-emerald-500 text-slate-950 shadow-md";
+                btnHistory.className = "py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition text-slate-400 hover:text-white";
+            } else {
+                viewWorkout.classList.add('hidden');
+                viewHistory.classList.remove('hidden');
+                btnHistory.className = "py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition bg-cyan-500 text-slate-950 shadow-md";
+                btnWorkout.className = "py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition text-slate-400 hover:text-white";
+                populateHistoryFilter();
+                renderHistory();
+            }
+        }
+
+        // ==================== GESTIONE SCHEDA & ESERCIZI ====================
+        function populateDaySelector() {
+            const selector = document.getElementById('day-selector');
+            selector.innerHTML = '';
+
+            Object.keys(appState.workouts).forEach(dayKey => {
+                const option = document.createElement('option');
+                option.value = dayKey;
+                option.textContent = appState.workouts[dayKey].title;
+                if (dayKey === appState.selectedDay) option.selected = true;
+                selector.appendChild(option);
+            });
+
+            document.getElementById('day-description').textContent = appState.workouts[appState.selectedDay].description;
+        }
+
+        function changeWorkoutDay(dayKey) {
+            appState.selectedDay = dayKey;
+            localStorage.setItem(STORAGE_KEYS.SELECTED_DAY, dayKey);
+            document.getElementById('day-description').textContent = appState.workouts[dayKey].description;
+            renderExercises();
+        }
+
+        // Trova l'ultimo allenamento registrato per un determinato esercizio
+        function getLastRecordForExercise(exerciseId) {
+            const records = appState.history.filter(item => item.exerciseId === exerciseId);
+            if (records.length === 0) return null;
+            // Ordina dal più recente al più vecchio
+            records.sort((a, b) => b.timestamp - a.timestamp);
+            return records[0];
+        }
+
+        // Genera le card degli esercizi del giorno selezionato
+        function renderExercises() {
+            const container = document.getElementById('exercises-container');
+            container.innerHTML = '';
+
+            const currentDay = appState.workouts[appState.selectedDay];
+            if (!currentDay || !currentDay.exercises) return;
+
+            currentDay.exercises.forEach((ex, index) => {
+                const lastRecord = getLastRecordForExercise(ex.id);
+                
+                // Costruzione HTML per il box "Ultima volta"
+                let lastTimeHTML = `
+                    <div class="flex items-center gap-2 text-xs text-slate-400 bg-slate-900/70 px-3 py-2 rounded-xl border border-slate-800">
+                        <i class="fa-solid fa-clock text-slate-500"></i>
+                        <span>Prima volta! Nessun dato precedente salvato.</span>
+                    </div>
+                `;
+
+                if (lastRecord) {
+                    const dateStr = new Date(lastRecord.timestamp).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+                    lastTimeHTML = `
+                        <div class="flex items-center justify-between bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-700/70">
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="text-slate-400"><i class="fa-solid fa-history text-cyan-400 mr-1"></i>Ultima volta (${dateStr}):</span>
+                                <span class="font-extrabold text-white text-sm">${lastRecord.weight} kg</span>
+                                <span class="text-slate-400">×</span>
+                                <span class="font-bold text-cyan-300">${lastRecord.reps} rip.</span>
+                            </div>
+                            <span id="badge-${ex.id}" class="hidden text-[11px] font-extrabold px-2 py-0.5 rounded-full"></span>
+                        </div>
+                    `;
+                }
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-800 border border-slate-700/80 rounded-2xl p-4 shadow-lg space-y-3.5 transition-all";
+                card.innerHTML = `
+                    <!-- Intestazione Esercizio -->
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-extrabold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-md">#${index + 1}</span>
+                                <span class="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-700">Target: ${ex.target}</span>
+                            </div>
+                            <h3 class="text-lg font-extrabold text-white mt-1.5 leading-snug">${ex.name}</h3>
+                        </div>
+                        
+                        <!-- Pulsante Aiuto Memoria / Tecnica -->
+                        <button onclick="toggleMemoryBox('${ex.id}')" id="btn-mem-${ex.id}" class="shrink-0 flex items-center gap-1.5 bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 px-3 py-2 rounded-xl text-xs font-bold transition active:scale-95">
+                            <i class="fa-solid fa-lightbulb"></i>
+                            <span>Aiuto</span>
+                        </button>
+                    </div>
+
+                    <!-- Box Espandibile: Aiuto Memoria & Note Personali -->
+                    <div id="mem-box-${ex.id}" class="hidden bg-slate-950/90 border border-cyan-500/30 rounded-xl p-3.5 space-y-3 accordion-content">
+                        <div>
+                            <div class="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                <i class="fa-solid fa-book-open"></i> Come si esegue (Promemoria)
+                            </div>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                ${ex.guide || 'Nessuna istruzione inserita per questo esercizio.'}
+                            </p>
+                        </div>
+                        <div class="pt-2 border-t border-slate-800">
+                            <label for="note-${ex.id}" class="block text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                                <span><i class="fa-solid fa-pen-to-square mr-1"></i> Le tue Note / Impostazioni</span>
+                                <span id="note-status-${ex.id}" class="text-[10px] text-slate-500 font-normal">Salvataggio auto</span>
+                            </label>
+                            <input type="text" id="note-${ex.id}" value="${escapeHTML(ex.note || '')}" 
+                                oninput="updateExerciseNote('${ex.id}', this.value)"
+                                placeholder="Es. Altezza sedile 4, usa presa stretta..." 
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+
+                    <!-- Confronto con Ultima Volta -->
+                    ${lastTimeHTML}
+
+                    <!-- Input Registro di Oggi -->
+                    <div class="grid grid-cols-12 gap-2.5 pt-1 items-end">
+                        <div class="col-span-4">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Peso (kg)</label>
+                            <div class="relative">
+                                <input type="number" step="0.5" inputmode="decimal" id="input-weight-${ex.id}" 
+                                    value="${lastRecord ? lastRecord.weight : ''}"
+                                    oninput="checkLiveProgress('${ex.id}')"
+                                    placeholder="0" 
+                                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-center text-white font-extrabold text-base focus:outline-none focus:border-emerald-500">
+                            </div>
+                        </div>
+                        <div class="col-span-4">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Ripetizioni</label>
+                            <input type="number" inputmode="numeric" id="input-reps-${ex.id}" 
+                                value="${lastRecord ? lastRecord.reps : ''}"
+                                oninput="checkLiveProgress('${ex.id}')"
+                                placeholder="10" 
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-center text-white font-extrabold text-base focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div class="col-span-4">
+                            <button onclick="saveExerciseLog('${ex.id}')" class="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-extrabold py-3 px-2 rounded-xl text-sm shadow-md shadow-emerald-500/20 transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-check"></i> Salva
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+
+                // Controlla subito se i valori precompilati mostrano stato neutro
+                if (lastRecord) {
+                    checkLiveProgress(ex.id);
+                }
+            });
+        }
+
+        // Apri/Chiudi il box Aiuto Memoria
+        function toggleMemoryBox(exId) {
+            const box = document.getElementById(`mem-box-${exId}`);
+            const btn = document.getElementById(`btn-mem-${exId}`);
+            const isHidden = box.classList.contains('hidden');
+            
+            if (isHidden) {
+                box.classList.remove('hidden');
+                btn.classList.add('bg-cyan-500', 'text-slate-950');
+                btn.classList.remove('bg-cyan-500/15', 'text-cyan-300');
+            } else {
+                box.classList.add('hidden');
+                btn.classList.remove('bg-cyan-500', 'text-slate-950');
+                btn.classList.add('bg-cyan-500/15', 'text-cyan-300');
+            }
+        }
+
+        // Salvataggio in tempo reale delle note personali dell'esercizio
+        function updateExerciseNote(exId, newNote) {
+            const currentDay = appState.workouts[appState.selectedDay];
+            const exercise = currentDay.exercises.find(e => e.id === exId);
+            if (exercise) {
+                exercise.note = newNote;
+                saveWorkouts();
+                const statusEl = document.getElementById(`note-status-${exId}`);
+                if (statusEl) {
+                    statusEl.textContent = "Salvato ✓";
+                    statusEl.classList.add('text-emerald-400');
+                    setTimeout(() => {
+                        statusEl.textContent = "Salvataggio auto";
+                        statusEl.classList.remove('text-emerald-400');
+                    }, 1500);
+                }
+            }
+        }
+
+        // Calcola in diretta se l'utente sta migliorando rispetto all'ultima volta
+        function checkLiveProgress(exId) {
+            const lastRecord = getLastRecordForExercise(exId);
+            const badge = document.getElementById(`badge-${exId}`);
+            if (!lastRecord || !badge) return;
+
+            const currentWeight = parseFloat(document.getElementById(`input-weight-${exId}`).value) || 0;
+            const currentReps = parseInt(document.getElementById(`input-reps-${exId}`).value) || 0;
+
+            const weightDiff = currentWeight - lastRecord.weight;
+            const repsDiff = currentReps - lastRecord.reps;
+
+            if (weightDiff > 0) {
+                badge.textContent = `+${weightDiff} kg! 🔥`;
+                badge.className = "text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40";
+            } else if (weightDiff === 0 && repsDiff > 0) {
+                badge.textContent = `+${repsDiff} rip! 💪`;
+                badge.className = "text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40";
+            } else if (weightDiff === 0 && repsDiff === 0) {
+                badge.textContent = `Stesso carico`;
+                badge.className = "text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400";
+            } else {
+                badge.className = "hidden";
+            }
+        }
+
+        // Registra l'allenamento di oggi per l'esercizio nello storico
+        function saveExerciseLog(exId) {
+            const weightInput = document.getElementById(`input-weight-${exId}`);
+            const repsInput = document.getElementById(`input-reps-${exId}`);
+
+            const weight = parseFloat(weightInput.value);
+            const reps = parseInt(repsInput.value);
+
+            if (isNaN(weight) || weight < 0 || isNaN(reps) || reps <= 0) {
+                showToast("Inserisci peso e ripetizioni validi!", "error");
+                return;
+            }
+
+            const currentDay = appState.workouts[appState.selectedDay];
+            const exercise = currentDay.exercises.find(e => e.id === exId);
+            const lastRecord = getLastRecordForExercise(exId);
+
+            // Verifica miglioramento per messaggio personalizzato
+            let improvementMsg = "Allenamento salvato!";
+            if (lastRecord) {
+                if (weight > lastRecord.weight) {
+                    improvementMsg = `Record! +${(weight - lastRecord.weight).toFixed(1)} kg rispetto all'ultima volta!`;
+                } else if (weight === lastRecord.weight && reps > lastRecord.reps) {
+                    improvementMsg = `Ottimo! +${reps - lastRecord.reps} ripetizioni in più!`;
+                }
+            }
+
+            const newEntry = {
+                id: 'log_' + Date.now(),
+                exerciseId: exId,
+                exerciseName: exercise ? exercise.name : 'Esercizio',
+                dayTitle: currentDay.title,
+                weight: weight,
+                reps: reps,
+                timestamp: Date.now()
+            };
+
+            appState.history.unshift(newEntry);
+            saveHistory();
+            renderExercises(); // Aggiorna il box "Ultima volta"
+            showToast(improvementMsg, "success");
+        }
+
+        // ==================== AGGIUNTA NUOVO ESERCIZIO ====================
+        function openAddExerciseModal() {
+            document.getElementById('add-exercise-modal').classList.remove('hidden');
+        }
+
+        function closeAddExerciseModal() {
+            document.getElementById('add-exercise-modal').classList.add('hidden');
+            document.getElementById('add-exercise-form').reset();
+        }
+
+        function handleAddExercise(event) {
+            event.preventDefault();
+            const name = document.getElementById('new-ex-name').value.trim();
+            const target = document.getElementById('new-ex-target').value.trim();
+            const guide = document.getElementById('new-ex-guide').value.trim();
+            const note = document.getElementById('new-ex-note').value.trim();
+
+            if (!name || !target) return;
+
+            const newEx = {
+                id: 'ex_' + Date.now(),
+                name: name,
+                target: target,
+                guide: guide || 'Esegui il movimento in modo controllato curando la postura.',
+                note: note
+            };
+
+            appState.workouts[appState.selectedDay].exercises.push(newEx);
+            saveWorkouts();
+            renderExercises();
+            closeAddExerciseModal();
+            showToast("Esercizio aggiunto alla scheda!", "success");
+        }
+
+        // ==================== CHECKLIST PRE-PALESTRA ====================
+        function toggleChecklistModal() {
+            const modal = document.getElementById('checklist-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function renderChecklist() {
+            const container = document.getElementById('checklist-items');
+            container.innerHTML = '';
+
+            let checkedCount = 0;
+
+            appState.checklist.forEach((item, index) => {
+                if (item.checked) checkedCount++;
+
+                const row = document.createElement('label');
+                row.className = `flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition select-none ${
+                    item.checked 
+                    ? 'bg-emerald-500/10 border-emerald-500/40 text-slate-300' 
+                    : 'bg-slate-950 border-slate-800 text-white hover:border-slate-700'
+                }`;
+                
+                row.innerHTML = `
+                    <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleChecklistItem(${index})" class="w-5 h-5 rounded accent-emerald-500 cursor-pointer">
+                    <span class="text-sm font-medium ${item.checked ? 'line-through text-slate-400' : ''}">${item.text}</span>
+                `;
+                container.appendChild(row);
+            });
+
+            // Aggiorna il badge nell'header
+            const badge = document.getElementById('checklist-badge');
+            badge.textContent = `${checkedCount}/${appState.checklist.length}`;
+            if (checkedCount === appState.checklist.length) {
+                badge.className = "bg-emerald-400 text-slate-950 text-xs font-extrabold px-2 py-0.5 rounded-full";
+            } else {
+                badge.className = "bg-slate-700 text-cyan-300 text-xs font-bold px-2 py-0.5 rounded-full";
+            }
+        }
+
+        function toggleChecklistItem(index) {
+            appState.checklist[index].checked = !appState.checklist[index].checked;
+            saveChecklist();
+            renderChecklist();
+        }
+
+        function resetChecklist() {
+            appState.checklist.forEach(item => item.checked = false);
+            saveChecklist();
+            renderChecklist();
+            showToast("Checklist azzerata!", "success");
+        }
+
+        // ==================== STORICO & ESPORTAZIONE ====================
+        function populateHistoryFilter() {
+            const filterSelect = document.getElementById('history-filter');
+            const currentVal = filterSelect.value;
+            filterSelect.innerHTML = '<option value="ALL">Tutti gli esercizi</option>';
+
+            const uniqueNames = [...new Set(appState.history.map(item => item.exerciseName))];
+            uniqueNames.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                if (name === currentVal) opt.selected = true;
+                filterSelect.appendChild(opt);
+            });
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-list');
+            const filterVal = document.getElementById('history-filter').value;
+            container.innerHTML = '';
+
+            let filtered = appState.history;
+            if (filterVal !== 'ALL') {
+                filtered = filtered.filter(item => item.exerciseName === filterVal);
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-10 px-4 bg-slate-800/40 rounded-2xl border border-slate-800">
+                        <i class="fa-solid fa-dumbbell text-3xl text-slate-600 mb-2"></i>
+                        <p class="text-sm font-bold text-slate-300">Nessun allenamento registrato</p>
+                        <p class="text-xs text-slate-500 mt-1">Vai nella scheda Allenamento, inserisci i pesi e premi Salva!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(entry => {
+                const dateObj = new Date(entry.timestamp);
+                const dateFormatted = dateObj.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+                const timeFormatted = dateObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-800/90 border border-slate-700/80 rounded-2xl p-3.5 flex items-center justify-between gap-3";
+                card.innerHTML = `
+                    <div>
+                        <span class="text-[11px] font-semibold text-cyan-400 block">${dateFormatted} • ${timeFormatted}</span>
+                        <h4 class="font-bold text-white text-sm mt-0.5">${entry.exerciseName}</h4>
+                    </div>
+                    <div class="text-right shrink-0 bg-slate-950 px-3 py-2 rounded-xl border border-slate-800">
+                        <span class="text-base font-extrabold text-emerald-400">${entry.weight} kg</span>
+                        <span class="block text-xs font-semibold text-slate-400">${entry.reps} ripetizioni</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Copia riepilogo testuale negli appunti (compatibile con iFrame/mobile)
+        function copySummaryToClipboard() {
+            if (appState.history.length === 0) {
+                showToast("Nessun dato da copiare!", "error");
+                return;
+            }
+
+            let text = "🏋️‍♂️ RIEPILOGO GYMMEMORY\n\n";
+            appState.history.slice(0, 30).forEach(entry => {
+                const d = new Date(entry.timestamp).toLocaleDateString('it-IT');
+                text += `• [${d}] ${entry.exerciseName}: ${entry.weight} kg x ${entry.reps} rip.\n`;
+            });
+
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast("Riepilogo copiato negli appunti!", "success");
+            } catch (err) {
+                showToast("Impossibile copiare il testo", "error");
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // Scarica file JSON completo di backup
+        function downloadBackupJSON() {
+            const dataStr = JSON.stringify(appState, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const dateStr = new Date().toISOString().slice(0, 10);
+            a.href = url;
+            a.download = `GymMemory_Backup_${dateStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("File di backup scaricato!", "success");
+        }
+
+        // Gestione modale conferma cancellazione storico
+        function confirmClearHistory() {
+            if (appState.history.length === 0) {
+                showToast("Lo storico è già vuoto.", "error");
+                return;
+            }
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+        }
+
+        function executeClearHistory() {
+            appState.history = [];
+            saveHistory();
+            populateHistoryFilter();
+            renderHistory();
+            renderExercises();
+            closeConfirmModal();
+            showToast("Storico eliminato.", "success");
+        }
+
+        // ==================== UTILITY ====================
+        function showToast(message, type = "success") {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast-message');
+            const iconEl = document.getElementById('toast-icon');
+
+            msgEl.textContent = message;
+            if (type === "error") {
+                iconEl.className = "fa-solid fa-circle-exclamation text-rose-400 text-lg";
+            } else {
+                iconEl.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
+            }
+
+            toast.classList.remove('opacity-0', 'translate-y-4');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-4');
+            }, 2800);
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag]));
+        }
+    </script>
+</body>
+</html>
